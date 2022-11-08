@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 
@@ -34,8 +35,36 @@ async function run() {
             res.send(service);
         })
 
+        app.post('/jwt', (req, res) => {
+            const user = req.body;
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
+            res.send({ token });
+        })
+
+        function verifyJwt(req, res, next) {
+            const authHeader = req.headers.authorization;
+            // console.log(authHeader);
+            if (!authHeader) {
+                return res.status(401).send({ message: 'unauthorized access' });
+            }
+            const token = authHeader.split(' ')[1];
+            jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
+                if (err) {
+                    return res.status(401).send({ message: 'unauthorized access' });
+                }
+                req.decoded = decoded;
+                next();
+            })
+        }
+
         // Orders
-        app.get('/orders', async (req, res) => {
+        app.get('/orders', verifyJwt, async (req, res) => {
+            const decoded = req.decoded;
+            // console.log(decoded);
+            if (decoded.email !== req.query.email) {
+                return res.status(403).send({ message: 'unauthorized access' });
+            }
+
             let query = {};
             if (req.query.email) {
                 query = {
