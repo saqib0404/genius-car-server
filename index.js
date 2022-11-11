@@ -22,8 +22,19 @@ async function run() {
         const orderCollection = client.db("genius-car").collection("orders");
 
         app.get('/services', async (req, res) => {
-            const query = {};
-            const cursor = serviceCollection.find(query);
+            let query = {};
+            const search = (req.query.search);
+            
+            if (search.length) {
+                query = {
+                    $text:
+                    {
+                        $search: search
+                    }
+                }
+            }
+            const filter = req.query.sort === 'asc' ? 1 : -1;
+            const cursor = serviceCollection.find(query).sort({ price: filter });
             const services = await cursor.toArray();
             res.send(services);
         })
